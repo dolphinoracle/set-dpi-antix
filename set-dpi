@@ -1,7 +1,9 @@
 #!/bin/bash
 
-#set dpi and restart desktop session
-
+#set-dpi - app to set font dpi and restart desktop session
+#code by dolphin_oracle June 3, 2016  
+#for antiX
+#scale_conky by BitJam, from antiX live-init system
 
 # translations stuff
 TEXTDOMAINDIR=/usr/share/locale 
@@ -9,8 +11,8 @@ TEXTDOMAIN=set-dpi
 
 APPLY=$"Apply"
 CLOSE=$"Close"
-TITLE=$"Set DPI"
-LABEL1=$"DPI: "
+TITLE=$"Set Font Size"
+LABEL1=$"Font Size: "
 CURRENT=$"Current"
 MESSAGE=$"!!!Added by set-dpi"
 
@@ -25,11 +27,16 @@ if [ "$DPI" = "" ]; then
 DPI=$(xdpyinfo |grep dots|rev|cut -d ' ' -f4|rev|cut -d 'x' -f1)
 fi
 
+SCALE=$(awk "BEGIN {printf \"%.2f\n\",$DPI/96}")
+
 #set up selection gui
-# dpi selections are multiples of 96 (1, 1.25, 1.5. 1.75, 2)
-selections=$(yad --form --title="$TITLE" --num-output --center --window-icon=video-display --button="$APPLY"!emblem-default!:0 --button="$CLOSE"!process-stop!:1\
+# dpi selections are multiples of 96 
+selections=$(yad --form --title="$TITLE" --center --window-icon=video-display --button="$APPLY"!emblem-default!:0 --button="$CLOSE"!process-stop!:1\
 	--field="":LBL ""\
-	--field="$LABEL1":CB "$DPI ($CURRENT)!96!120!144!168!192!")
+	--field="$LABEL1":CB "$SCALE ($DPI dpi) ($CURRENT)!0.83 (80 dpi)!0.89 (85 dpi)!0.92 (88 dpi)!0.94 (90 dpi)!0.96 (92 dpi)!0.98 (94 dpi)!1.00 (96 dpi) (default)!1.02 (98 dpi)!1.04 (100 dpi)!1.08 (104 dpi)!1.12 (108 dpi)!\
+1.17 (112 dpi)!1.20 (115 dpi)!1.25 (120 dpi)!1.30 (125 dpi)!1.35 (130 dpi)!1.41 (135 dpi)!1.46 (140 dpi)!1.50 (144 dpi)!1.51 (145 dpi)!1.56 (150 dpi)!1.61 (155 dpi)!1.67 (160 dpi)!1.75 (168 dpi)!\
+1.77 (170 dpi)!1.88 (180 dpi)!1.98 (190 dpi)!2.00 (196 dpi)!2.08 (200 dpi)!2.29 (220 dpi)!2.50 (240 dpi)!2.71 (260 dpi)!2.92 (280 dpi)!3.12 (300 dpi)!3.33 (320 dpi)!3.54 (340 dpi)!\
+3.75 (360 dpi)!3.96 (380 dpi)!4.17 (400 dpi)!4.43 (425 dpi)!4.69 (450 dpi)")
 }
 
 actions()
@@ -52,26 +59,9 @@ esac
 
 adjust_settings()
 {
-#dialog will give index number of selected value
-INDEX=$(echo $selections|cut -d '|' -f2)
-echo $INDEX
 
-#set DPI variable depending on selected index value
-case $INDEX in
-
-	1) DPI="$DPI"
-		   ;;
-	2) DPI="96"
-		   ;;
-	3) DPI="120"
-		   ;;
-	4) DPI="144"
-		   ;;
-	5) DPI="168"
-			;;
-	6) DPI="192"
-		   ;;
-esac
+DPI=$(echo $selections|cut -d '(' -f2|cut -d ' ' -f1)
+echo Selected DPI is: $DPI
 
 #make changes to Xresources file
 echo $DPI
@@ -111,6 +101,7 @@ quit()
 }
 
 scale_conky() {
+#scale conky to width for new dpi (modified live-init code from BitJam)
 #    local dpi=${1%.*}  user=$2  home=$3
 #    local file=/$home/.conkyrc  def_width=180  def_gheight=30
 local def_width=180  def_gheight=30
@@ -121,7 +112,7 @@ local dpi=$DPI
     head $conkyfile | grep -iq "^#[[:space:]]*Standard[[:space:]]*antiX[[:space:]].conkyrc" || return
 
     local width=$(($dpi * $def_width / 96 ))
-    # Don't make conky smaller than the default size
+  # Don't make conky smaller than the default size
     if [ $width -lt $def_width ]; then
         dpi=96
         width=$def_width
