@@ -15,7 +15,7 @@ TITLE=$"Set Font Size"
 LABEL1=$"Font Size: "
 CURRENT=$"Current"
 MESSAGE=$"!!!Added by set-dpi"
-MESSAGE2=$"Any open applications will require a restart for changes to take effect"
+MESSAGE2=$"Open Apps will Require Restart for Changes to Take Effect"
 
 #initialize selection dialog
 get_selections()
@@ -32,16 +32,13 @@ SCALE=$(awk "BEGIN {printf \"%.2f\n\",$DPI/96}")
 
 #set up selection gui
 # dpi selections are multiples of 96 
-selections=$(yad --form --title="$TITLE" --center --window-icon=video-display --width=300 --button="$APPLY"!emblem-default!:0 --button="$CLOSE"!process-stop!:1\
-	--field="":LBL ""\
-	--field="$LABEL1":CB "$SCALE ($DPI dpi) ($CURRENT)!0.9 (86 dpi)!0.95 (91 dpi)!1.00 (96 dpi)!1.17 (112 dpi)!1.25 (120 dpi)!1.33 (128 dpi)!1.5 (144 dpi)!1.67 (160 dpi)!1.75 (168 dpi)!1.84 (177 dpi)!2.00 (192 dpi)!\
-2.17 (208 dpi)!2.25 (216 dpi)!2.33 (224 dpi)!2.5 (240 dpi)!2.67 (256 dpi)!2.75 (264 dpi)!2.84 (273 dpi)!3.00 (288 dpi)!3.25 (312 dpi)!3.50 (336 dpi)!3.75 (360 dpi)!4.00 (384 dpi)!4.25 (408 dpi)!4.50 (432 dpi)!"\
- --field="":LBL ""\
---field="$MESSAGE2":LBL "")
+selections=$(yad --scale --title="$TITLE" --center --window-icon=video-display --button="$APPLY"!emblem-default!:0 --button="$CLOSE"!process-stop!:1\
+	--value=$SCALE --min-value=.80 --max-value=4.5 --step=.02)
 }
 
 actions()
 {
+
 #capture the exit code from the selection dialog
 status2=$?
 
@@ -91,18 +88,16 @@ sleep 1
 
 ##restart antix control center if running
 
-if [ "$(psg antixcc.sh)" ]; then
-	pkill antixcc.sh
-	kill $(psg -n program=ControlCenter)
+if [ $(psg antixcc.sh) ]; then
+	pkill -x antixcc.sh
 	antixcc.sh &
-	sleep .5
 fi
 
 #restart desktop-session which will also restart conky
 /usr/local/lib/desktop-session/desktop-session-restart &
 
 #let things settle down before bringing back the selection dialog
-sleep 5
+sleep 1
 actionstatus=0
 }
 
