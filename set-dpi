@@ -17,16 +17,22 @@ CURRENT=$"Current"
 MESSAGE=$"!!!Added by set-dpi"
 MESSAGE2=$"Any open applications will require a restart for changes to take effect"
 
+LAUNCH_USER=$(logname)
+
+echo $LAUNCH_USER
+
 #initialize selection dialog
 get_selections()
 {
 #get predefined Xft.dpi value from existing ~/Xresources file
-DPI=$(xrdb -query |grep dpi|cut -f2)
+DPI=$(su $LAUNCH_USER -p -c 'xrdb -query |grep dpi|cut -f2')
 
 #if Xft.dpi setting doesn't exist in ~/Xresources, then guess dpi from X 
 if [ "$DPI" = "" ]; then
-DPI=$(xdpyinfo |grep dots|rev|cut -d ' ' -f4|rev|cut -d 'x' -f1)
+DPI=$(su $LAUNCH_USER -p -c 'xdpyinfo |grep dots|rev|cut -d\  -f4|rev|cut -dx -f1')
 fi
+
+echo "Initial DPI is $DPI"
 
 SCALE=$(awk "BEGIN {printf \"%.2f\n\",$DPI/96}")
 
@@ -63,25 +69,49 @@ adjust_settings()
 {
 
 DPI=$(echo $selections|cut -d '(' -f2|cut -d ' ' -f1)
-echo Selected DPI is: $DPI
 
 #make changes to Xresources file
-echo $DPI
-FILE="/home/$USER/.Xresources"
+echo "Selected DPI is "$DPI
+FILE="/home/$LAUNCH_USER/.Xresources"
+echo "FILE is "$FILE
 EX_SETTING=$(grep Xft.dpi $FILE)
+echo "EX_SETTING is "$EX_SETTING
 
-#if existing setting is not present, write one into ~/.Xresources
+##if existing setting is not present, write one into ~/.Xresources
 if [ "$EX_SETTING" = "" ]; then
 	echo " " >>$FILE
 	echo $MESSAGE>>$FILE
 	echo "Xft.dpi:	" $DPI>>$FILE
 	else
-	#if existing setting is present, change it
-	sed -i s/"Xft.dpi:.*"/"Xft.dpi: $DPI"/ $FILE
+    #if existing setting is present, change it
+    sed -i s/"Xft.dpi:.*"/"Xft.dpi: $DPI"/ $FILE
 fi
+
+echo "got past Xresources"
 
 #replace old Xresources file with current version
 xrdb $FILE
+
+echo "got past xrdb"
+
+#if /etc/slim.conf exists, add to slim.conf
+
+FILE2="/etc/slim.conf"
+if [ -e $FILE2 ]; then
+    #check for dpi setting
+    var1=$(grep dpi $FILE2)
+    if [ -n var1 ]; then
+        var2=${var1/-dpi *[0-9]/-dpi $DPI}
+        gksu sed -i s/"$var1"/"$var2"/ $FILE2
+    else
+        var1=$(grep xserver_arguments $FILE2)
+        if [ -n var1 ]; then
+            var2="$var1 -dpi $DPI"
+            sed -i s/"$var1"/"$var2"/ $FILE2
+        fi
+    fi
+fi
+        
 
 #scale conky to width for new dpi (modified live-init code from BitJam)
 scale_conky
@@ -94,12 +124,12 @@ sleep 1
 if [ "$(psg antixcc.sh)" ]; then
 	pkill antixcc.sh
 	kill $(psg -n program=ControlCenter)
-	antixcc.sh &
+	su $LAUNCH_USER -p -c 'antixcc.sh &'
 	sleep .5
 fi
 
 #restart desktop-session which will also restart conky
-/usr/local/lib/desktop-session/desktop-session-restart &
+su $LAUNCH_USER -c '/usr/local/lib/desktop-session/desktop-session-restart &'
 
 #let things settle down before bringing back the selection dialog
 sleep 5
@@ -116,7 +146,7 @@ scale_conky() {
 #    local dpi=${1%.*}  user=$2  home=$3
 #    local file=/$home/.conkyrc  def_width=180  def_gheight=30
 local def_width=180  def_gheight=30
-local conkyfile=$HOME/.conkyrc
+local conkyfile=/home/$LAUNCH_USER/.conkyrc
 local dpi=$DPI
     [ "$dpi" ] || return
     test -w $conkyfile || return
